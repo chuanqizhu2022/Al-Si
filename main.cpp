@@ -12,9 +12,9 @@ using namespace cimg_library;
 
 #define N 3
 #define NTH 8
-#define NDX 64
-#define NDY 64
-#define NDZ 64
+#define NDX 128
+#define NDY 128
+#define NDZ 1
 #define NDL 2560
 #define PI 3.14159
 
@@ -30,29 +30,45 @@ int rowsl = NDL / NTH;
 int nstep = 30001;
 int pstep = 2000;
 
-double dx = 1.0;
-double dtime = 1.0;
+double dx = 1.0e-7;
+double dtime = 1.0e-7;
 
-double gamma0 = 0.1;
+// interface properties
+double gamma1 = 0.1;
 double astre = -0.05;
-double mobi = 0.25;
+double mobi1 = 1.0e-7;
 double delta = 5.0 * dx;
 
-double A0 = 8.0 * delta * gamma0 / PI / PI;
-double W0 = 4.0 * gamma0 / delta;
-double M0 = mobi * PI * PI / (8.0 * delta);
-double S0 = 0.03;
+double A1 = 8.0 * delta * gamma1 / PI / PI;
+double W1 = 4.0 * gamma1 / delta;
+double M1 = mobi1 * PI * PI / (8.0 * delta);
 
-double Dl = 0.1;
-double Ds = 2.0e-4;
+// phase diagram
+double Tm1 = 660.0;
+double ml1 = -680.0;
+double Te = 0.577;
+double ce = 0.122;
+double ml2 = 10.0;
+double kap1 = 0.2;
+double kap2 = 0.2;
 
-double gradT = 0.002;
-double rateT = 0.000006;
-double temp0 = -1.30 - NDZ / 4 * gradT;
-double cl = 0.5;
+double S1 = 1.08e6;
+double S2 = 0.03e7;
 
+// diffusivities
+double Dl = 0.1e-7;
+double Ds = 2.0e-11;
+
+double gradT = 0.0;   // 0.002;
+double rateT = 0.0;   // 0.000006;
+double temp0 = 659.9; //-1.30 - NDZ / 4 * gradT;
+double cl = 0.00;
+
+// physical criteria
+double cap_vol = A1 / S1;
+// compuation criteria
 double alpha_d = dtime * Dl / dx / dx;
-double alpha_m = dtime / dx / dx * mobi * A0;
+double alpha_m = dtime / dx / dx * mobi1 * gamma1;
 
 double mij[N][N], aij[N][N], wij[N][N], fij[N][N];
 double thij[N][N], vpij[N][N], etaij[N][N];
@@ -88,6 +104,7 @@ int main(void)
 {
     cout << "----------------------------------------------" << endl;
     cout << "Computation Started!" << endl;
+    cout << "ratio of interface energy to volume energy is " << cap_vol << endl;
     cout << "concenration field stablity number is: " << alpha_d << endl;
     cout << "phase field stability number is: " << alpha_m << endl;
 
@@ -165,9 +182,9 @@ int main(void)
     {
         for (j = 0; j <= nm; j++)
         {
-            wij[i][j] = W0;
-            aij[i][j] = A0;
-            mij[i][j] = M0;
+            wij[i][j] = W1;
+            aij[i][j] = A1;
+            mij[i][j] = M1;
             anij[i][j] = 0;
             if (i == j)
             {
@@ -178,10 +195,10 @@ int main(void)
         }
     }
 
-    mij[1][2] = M0 * 0.1;
-    mij[2][1] = M0 * 0.1;
-    anij[1][0] = 1;
-    anij[0][1] = 1;
+    mij[1][2] = M1 * 0.1;
+    mij[2][1] = M1 * 0.1;
+    // anij[1][0] = 1;
+    // anij[0][1] = 1;
 
     for (i = 0; i <= ndmx; i++)
     {
@@ -201,7 +218,8 @@ int main(void)
         {
             for (k = 0; k <= ndmz; k++)
             {
-                if (((i - NDX / 2) * (i - NDX / 2) + (j - NDY / 2) * (j - NDY / 2) < (NDX * NDX / 2.0 / PI)) && (k < NDZ / 4))
+                if ((i - NDX / 2) * (i - NDX / 2) + (j - NDY / 2) * (j - NDY / 2) + (k - NDZ / 2) * (k - NDZ / 2) < NDX / 8 * NDX / 8)
+                // if (((i - NDX / 2) * (i - NDX / 2) + (j - NDY / 2) * (j - NDY / 2) < (NDX * NDX / 2.0 / PI)) && (k < NDZ / 4))
                 {
                     phi[1][i][j][k] = 1.0;
                     conp[1][i][j][k] = calC1e(temp[i][j][k]);
@@ -210,15 +228,15 @@ int main(void)
                     phi[0][i][j][k] = 0.0;
                     conp[0][i][j][k] = calC01e(temp[i][j][k]);
                 }
-                else if (((i - NDX / 2) * (i - NDX / 2) + (j - NDY / 2) * (j - NDY / 2) >= (NDX * NDX / 2.0 / PI)) && (k < NDZ / 4))
-                {
-                    phi[1][i][j][k] = 0.0;
-                    conp[1][i][j][k] = calC1e(temp[i][j][k]);
-                    phi[2][i][j][k] = 1.0;
-                    conp[2][i][j][k] = calC2e(temp[i][j][k]);
-                    phi[0][i][j][k] = 0.0;
-                    conp[0][i][j][k] = calC02e(temp[i][j][k]);
-                }
+                // else if (((i - NDX / 2) * (i - NDX / 2) + (j - NDY / 2) * (j - NDY / 2) >= (NDX * NDX / 2.0 / PI)) && (k < NDZ / 4))
+                // {
+                //     phi[1][i][j][k] = 0.0;
+                //     conp[1][i][j][k] = calC1e(temp[i][j][k]);
+                //     phi[2][i][j][k] = 1.0;
+                //     conp[2][i][j][k] = calC2e(temp[i][j][k]);
+                //     phi[0][i][j][k] = 0.0;
+                //     conp[0][i][j][k] = calC02e(temp[i][j][k]);
+                // }
                 else
                 {
                     phi[1][i][j][k] = 0.0;
@@ -292,22 +310,22 @@ int main(void)
     }
 
     // create a vtk file for writing passed domain)
-    FILE *streamc;
-    char bufferc[30];
-    sprintf(bufferc, "data/con/passed.vtk");
-    streamc = fopen(bufferc, "a");
-    fprintf(streamc, "# vtk DataFile Version 1.0\n");
-    fprintf(streamc, "passed.vtk\n");
-    fprintf(streamc, "ASCII\n");
-    fprintf(streamc, "DATASET STRUCTURED_POINTS\n");
-    fprintf(streamc, "DIMENSIONS %d %d %d\n", NDX, NDY, NDZ);
-    fprintf(streamc, "ORIGIN 0.0 0.0 0.0\n");
-    fprintf(streamc, "ASPECT_RATIO 1.0 1.0 1.0\n");
-    fprintf(streamc, "\n");
-    fprintf(streamc, "POINT_DATA %d\n", NDX * NDY * NDZ);
-    fprintf(streamc, "SCALARS scalars float\n");
-    fprintf(streamc, "LOOKUP_TABLE default\n");
-    fclose(streamc);
+    // FILE *streamc;
+    // char bufferc[30];
+    // sprintf(bufferc, "data/con/passed.vtk");
+    // streamc = fopen(bufferc, "a");
+    // fprintf(streamc, "# vtk DataFile Version 1.0\n");
+    // fprintf(streamc, "passed.vtk\n");
+    // fprintf(streamc, "ASCII\n");
+    // fprintf(streamc, "DATASET STRUCTURED_POINTS\n");
+    // fprintf(streamc, "DIMENSIONS %d %d %d\n", NDX, NDY, NDZ);
+    // fprintf(streamc, "ORIGIN 0.0 0.0 0.0\n");
+    // fprintf(streamc, "ASPECT_RATIO 1.0 1.0 1.0\n");
+    // fprintf(streamc, "\n");
+    // fprintf(streamc, "POINT_DATA %d\n", NDX * NDY * NDZ);
+    // fprintf(streamc, "SCALARS scalars float\n");
+    // fprintf(streamc, "LOOKUP_TABLE default\n");
+    // fclose(streamc);
 
 #pragma omp parallel num_threads(NTH)
     {
@@ -594,19 +612,19 @@ int main(void)
                             }
                             if (ii == 1 && jj == 0)
                             {
-                                dF = calDF10(conp[0][ix][iy][iz], temp[ix][iy][iz], S0);
+                                dF = calDF10(conp[0][ix][iy][iz], temp[ix][iy][iz], S1);
                             }
                             else if (ii == 0 && jj == 1)
                             {
-                                dF = -calDF10(conp[0][ix][iy][iz], temp[ix][iy][iz], S0);
+                                dF = -calDF10(conp[0][ix][iy][iz], temp[ix][iy][iz], S1);
                             }
                             else if (ii == 2 && jj == 0)
                             {
-                                dF = calDF20(conp[0][ix][iy][iz], temp[ix][iy][iz], S0);
+                                dF = calDF20(conp[0][ix][iy][iz], temp[ix][iy][iz], S2);
                             }
                             else if (ii == 0 && jj == 2)
                             {
-                                dF = -calDF20(conp[0][ix][iy][iz], temp[ix][iy][iz], S0);
+                                dF = -calDF20(conp[0][ix][iy][iz], temp[ix][iy][iz], S2);
                             }
                             else
                             {
@@ -943,150 +961,150 @@ int main(void)
         }
 
         //----------------------------------------------  Moving frame  -----------------------------------------------
-#pragma omp barrier
-        if (th_id == 0)
-        {
-            // check if the bottom is solid
-            sumplane = 0.0;
-            for (ix = 0; ix <= ndmx; ix++)
-            {
-                for (iy = 0; iy <= ndmy; iy++)
-                {
-                    if (phi[0][ix][iy][0] != 0.0)
-                    {
-                        hasS = 0;
-                    }
-                    sumplane += phi[0][ix][iy][0];
-                    if ((sumplane == 0.0) && (iy == ndmy) && (ix == ndmx))
-                    {
-                        hasS = 1;
-                    }
-                }
-            }
-            // search interface front
-            intpos = 0;
-            if (hasS == 1)
-            {
-                allS = 1;
-                for (iz = 0; iz <= ndmz; iz++)
-                {
-                    if (allS == 0)
-                    {
-                        intpos = iz - 1;
-                        break;
-                    }
-                    for (ix = 0; ix <= ndmx; ix++)
-                    {
-                        for (iy = 0; iy <= ndmy; iy++)
-                        {
-                            if (phi[0][ix][iy][iz] > 0.0)
-                            {
-                                allS = 0;
-                                break;
-                            }
-                        }
-                        if (allS == 0)
-                        {
-                            break;
-                        }
-                    }
-                }
+        // #pragma omp barrier
+        //         if (th_id == 0)
+        //         {
+        //             // check if the bottom is solid
+        //             sumplane = 0.0;
+        //             for (ix = 0; ix <= ndmx; ix++)
+        //             {
+        //                 for (iy = 0; iy <= ndmy; iy++)
+        //                 {
+        //                     if (phi[0][ix][iy][0] != 0.0)
+        //                     {
+        //                         hasS = 0;
+        //                     }
+        //                     sumplane += phi[0][ix][iy][0];
+        //                     if ((sumplane == 0.0) && (iy == ndmy) && (ix == ndmx))
+        //                     {
+        //                         hasS = 1;
+        //                     }
+        //                 }
+        //             }
+        //             // search interface front
+        //             intpos = 0;
+        //             if (hasS == 1)
+        //             {
+        //                 allS = 1;
+        //                 for (iz = 0; iz <= ndmz; iz++)
+        //                 {
+        //                     if (allS == 0)
+        //                     {
+        //                         intpos = iz - 1;
+        //                         break;
+        //                     }
+        //                     for (ix = 0; ix <= ndmx; ix++)
+        //                     {
+        //                         for (iy = 0; iy <= ndmy; iy++)
+        //                         {
+        //                             if (phi[0][ix][iy][iz] > 0.0)
+        //                             {
+        //                                 allS = 0;
+        //                                 break;
+        //                             }
+        //                         }
+        //                         if (allS == 0)
+        //                         {
+        //                             break;
+        //                         }
+        //                     }
+        //                 }
 
-                allL = 0;
-                for (iz = intpos; iz <= ndmx; iz++)
-                {
-                    sumplane = 0.0;
-                    for (ix = 0; ix <= ndmx; ix++)
-                    {
-                        for (iy = 0; iy <= ndmy; iy++)
-                        {
-                            sumplane += phi[0][ix][iy][iz];
-                        }
-                    }
-                    if (sumplane == double(NDX * NDY))
-                    {
-                        allL = 1;
-                    }
-                    if (allL == 1)
-                    {
-                        intpos = iz;
-                        break;
-                    }
-                }
-            }
-            // check the distance from the middle of the domain
-            if (intpos > mid)
-            {
-                dist = intpos - mid;
-                frapass += dist;
-                cout << "--" << endl;
-                cout << "    the distance away from middle is " << dist << endl;
-                cout << "--" << endl;
-                cout << "    the interface temperature is " << temp[NDX / 2][NDY / 2][mid] << endl;
+        //                 allL = 0;
+        //                 for (iz = intpos; iz <= ndmx; iz++)
+        //                 {
+        //                     sumplane = 0.0;
+        //                     for (ix = 0; ix <= ndmx; ix++)
+        //                     {
+        //                         for (iy = 0; iy <= ndmy; iy++)
+        //                         {
+        //                             sumplane += phi[0][ix][iy][iz];
+        //                         }
+        //                     }
+        //                     if (sumplane == double(NDX * NDY))
+        //                     {
+        //                         allL = 1;
+        //                     }
+        //                     if (allL == 1)
+        //                     {
+        //                         intpos = iz;
+        //                         break;
+        //                     }
+        //                 }
+        //             }
+        //             // check the distance from the middle of the domain
+        //             if (intpos > mid)
+        //             {
+        //                 dist = intpos - mid;
+        //                 frapass += dist;
+        //                 cout << "--" << endl;
+        //                 cout << "    the distance away from middle is " << dist << endl;
+        //                 cout << "--" << endl;
+        //                 cout << "    the interface temperature is " << temp[NDX / 2][NDY / 2][mid] << endl;
 
-                // write passed domain
-                FILE *streamc;
-                char bufferc[30];
-                sprintf(bufferc, "data/con/passed.vtk");
-                streamc = fopen(bufferc, "a");
+        //                 // write passed domain
+        //                 FILE *streamc;
+        //                 char bufferc[30];
+        //                 sprintf(bufferc, "data/con/passed.vtk");
+        //                 streamc = fopen(bufferc, "a");
 
-                for (iz = 0; iz < dist; iz++)
-                {
-                    for (ix = 0; ix <= ndmx; ix++)
-                    {
-                        for (iy = 0; iy <= ndmy; iy++)
-                        {
-                            fprintf(streamc, "%e\n", cont[ix][iy][iz]);
-                        }
-                    }
-                }
-                fclose(streamc);
+        //                 for (iz = 0; iz < dist; iz++)
+        //                 {
+        //                     for (ix = 0; ix <= ndmx; ix++)
+        //                     {
+        //                         for (iy = 0; iy <= ndmy; iy++)
+        //                         {
+        //                             fprintf(streamc, "%e\n", cont[ix][iy][iz]);
+        //                         }
+        //                     }
+        //                 }
+        //                 fclose(streamc);
 
-                for (iz = 0; iz <= (ndmz - dist); iz++)
-                {
-                    for (ix = 0; ix <= ndmx; ix++)
-                    {
-                        for (iy = 0; iy <= ndmy; iy++)
-                        {
-                            // temp
-                            temp[ix][iy][iz] = temp[ix][iy][iz + dist];
-                            // cont
-                            cont[ix][iy][iz] = cont[ix][iy][iz + dist];
-                            // phi
-                            phi[0][ix][iy][iz] = phi[0][ix][iy][iz + dist];
-                            phi[1][ix][iy][iz] = phi[1][ix][iy][iz + dist];
-                            phi[2][ix][iy][iz] = phi[2][ix][iy][iz + dist];
-                            // conp
-                            conp[0][ix][iy][iz] = conp[0][ix][iy][iz + dist];
-                            conp[1][ix][iy][iz] = conp[1][ix][iy][iz + dist];
-                            conp[2][ix][iy][iz] = conp[2][ix][iy][iz + dist];
-                        }
-                    }
-                }
-                for (iz = (ndmz - dist + 1); iz <= ndmz; iz++)
-                {
-                    for (ix = 0; ix <= ndmx; ix++)
-                    {
-                        for (iy = 0; iy <= ndmy; iy++)
-                        {
-                            // temp
-                            temp[ix][iy][iz] = temp[ix][iy][ndmz - dist] + gradT * (iz - ndmz + dist) * dx;
-                            // cont
-                            // new liquid is flowing into the box
-                            cont[ix][iy][iz] = cl;
-                            // phi
-                            phi[0][ix][iy][iz] = 1.0;
-                            phi[1][ix][iy][iz] = 0.0;
-                            phi[2][ix][iy][iz] = 0.0;
-                            // conp
-                            conp[0][ix][iy][iz] = cl;
-                            conp[1][ix][iy][iz] = calC1e(temp[ix][iy][iz]);
-                            conp[2][ix][iy][iz] = calC2e(temp[ix][iy][iz]);
-                        }
-                    }
-                }
-            }
-        }
+        //                 for (iz = 0; iz <= (ndmz - dist); iz++)
+        //                 {
+        //                     for (ix = 0; ix <= ndmx; ix++)
+        //                     {
+        //                         for (iy = 0; iy <= ndmy; iy++)
+        //                         {
+        //                             // temp
+        //                             temp[ix][iy][iz] = temp[ix][iy][iz + dist];
+        //                             // cont
+        //                             cont[ix][iy][iz] = cont[ix][iy][iz + dist];
+        //                             // phi
+        //                             phi[0][ix][iy][iz] = phi[0][ix][iy][iz + dist];
+        //                             phi[1][ix][iy][iz] = phi[1][ix][iy][iz + dist];
+        //                             phi[2][ix][iy][iz] = phi[2][ix][iy][iz + dist];
+        //                             // conp
+        //                             conp[0][ix][iy][iz] = conp[0][ix][iy][iz + dist];
+        //                             conp[1][ix][iy][iz] = conp[1][ix][iy][iz + dist];
+        //                             conp[2][ix][iy][iz] = conp[2][ix][iy][iz + dist];
+        //                         }
+        //                     }
+        //                 }
+        //                 for (iz = (ndmz - dist + 1); iz <= ndmz; iz++)
+        //                 {
+        //                     for (ix = 0; ix <= ndmx; ix++)
+        //                     {
+        //                         for (iy = 0; iy <= ndmy; iy++)
+        //                         {
+        //                             // temp
+        //                             temp[ix][iy][iz] = temp[ix][iy][ndmz - dist] + gradT * (iz - ndmz + dist) * dx;
+        //                             // cont
+        //                             // new liquid is flowing into the box
+        //                             cont[ix][iy][iz] = cl;
+        //                             // phi
+        //                             phi[0][ix][iy][iz] = 1.0;
+        //                             phi[1][ix][iy][iz] = 0.0;
+        //                             phi[2][ix][iy][iz] = 0.0;
+        //                             // conp
+        //                             conp[0][ix][iy][iz] = cl;
+        //                             conp[1][ix][iy][iz] = calC1e(temp[ix][iy][iz]);
+        //                             conp[2][ix][iy][iz] = calC2e(temp[ix][iy][iz]);
+        //                         }
+        //                     }
+        //                 }
+        //             }
+        //         }
         istep = istep + 1;
 #pragma omp barrier
         if (istep < nstep)
@@ -1128,106 +1146,81 @@ void datasave(int step)
         {
             for (i = 0; i <= ndmx; i++)
             {
-                fprintf(streamc0, "%e\n", cont[i][j][k]);
+                fprintf(streamc0, "%e\n", phi[1][i][j][k]);
+                // fprintf(streamc0, "%e\n", cont[i][j][k]);
             }
         }
     }
     fclose(streamc0);
 
     // write interface temperature
-    FILE *streamit; //ストリームのポインタ設定
-    char bufferit[30];
-    sprintf(bufferit, "data/interface/int_temp.csv");
-    streamit = fopen(bufferit, "a");
-    fprintf(streamit, "%e   ", temp[NDX / 2][NDY / 2][mid]);
-    fprintf(streamit, "\n");
-    fclose(streamit); //ファイルをクローズ
+    // FILE *streamit; //ストリームのポインタ設定
+    // char bufferit[30];
+    // sprintf(bufferit, "data/interface/int_temp.csv");
+    // streamit = fopen(bufferit, "a");
+    // fprintf(streamit, "%e   ", temp[NDX / 2][NDY / 2][mid]);
+    // fprintf(streamit, "\n");
+    // fclose(streamit); //ファイルをクローズ
 
     // write nominal concentration
-    FILE *streamnc; //ストリームのポインタ設定
-    char buffernc[30];
-    sprintf(buffernc, "data/con/nom_con.csv");
-    streamnc = fopen(buffernc, "a");
-    fprintf(streamnc, "%e   ", c0);
-    fprintf(streamnc, "\n");
-    fclose(streamnc); //ファイルをクローズ
+    // FILE *streamnc; //ストリームのポインタ設定
+    // char buffernc[30];
+    // sprintf(buffernc, "data/con/nom_con.csv");
+    // streamnc = fopen(buffernc, "a");
+    // fprintf(streamnc, "%e   ", c0);
+    // fprintf(streamnc, "\n");
+    // fclose(streamnc); //ファイルをクローズ
 
     // write fraction of solid phases
-    FILE *streamf1; //ストリームのポインタ設定
-    char bufferf1[30];
-    sprintf(bufferf1, "data/fraction/solid1.csv");
-    streamf1 = fopen(bufferf1, "a");
-    fprintf(streamf1, "%e   ", fs1 / (fs1 + fs2));
-    fprintf(streamf1, "\n");
-    fclose(streamf1); //ファイルをクローズ
+    // FILE *streamf1; //ストリームのポインタ設定
+    // char bufferf1[30];
+    // sprintf(bufferf1, "data/fraction/solid1.csv");
+    // streamf1 = fopen(bufferf1, "a");
+    // fprintf(streamf1, "%e   ", fs1 / (fs1 + fs2));
+    // fprintf(streamf1, "\n");
+    // fclose(streamf1); //ファイルをクローズ
 
-    FILE *streamiv;
-    char bufferiv[30];
-    sprintf(bufferiv, "data/interface/int_vel.csv");
-    streamiv = fopen(bufferiv, "a");
-    fprintf(streamiv, "%e   ", invV);
-    fprintf(streamiv, "\n");
-    fclose(streamiv);
+    // FILE *streamiv;
+    // char bufferiv[30];
+    // sprintf(bufferiv, "data/interface/int_vel.csv");
+    // streamiv = fopen(bufferiv, "a");
+    // fprintf(streamiv, "%e   ", invV);
+    // fprintf(streamiv, "\n");
+    // fclose(streamiv);
 }
 
 double calC01e(double temp0)
 {
-    double Te = 0.0;
-    double ce = 0.5;
-    double ml1 = -10.0;
-    double kap1 = 0.2;
-    double c01e;
-    c01e = ce + (temp0 - Te) / ml1;
+    double c01e = (temp0 - Tm1) / ml1;
     return c01e;
 }
 
 double calC1e(double temp0)
 {
-    double Te = 0.0;
-    double ce = 0.5;
-    double ml1 = -10.0;
-    double kap1 = 0.2;
-    double c1e;
-    c1e = (ce + (temp0 - Te) / ml1) * kap1;
+    double c1e = ((temp0 - Tm1) / ml1) * kap1;
     return c1e;
 }
 
 double calC02e(double temp0)
 {
-    double Te = 0.0;
-    double ce = 0.5;
-    double ml2 = 10.0;
-    double kap2 = 0.2;
-    double c02e;
-    c02e = ce + (temp0 - Te) / ml2;
+    double c02e = ce + (temp0 - Te) / ml2;
     return c02e;
 }
 
 double calC2e(double temp0)
 {
-    double Te = 0.0;
-    double ce = 0.5;
-    double ml2 = 10.0;
-    double kap2 = 0.2;
-    double c2e;
-    c2e = 1.0 - (1.0 - (ce + (temp0 - Te) / ml2)) * kap2;
+    double c2e = 1.0 - (1.0 - (ce + (temp0 - Te) / ml2)) * kap2;
     return c2e;
 }
 
 double calDF10(double con0, double temp0, double dS)
 {
-    double Te = 0.0;
-    double ce = 0.5;
-    double ml1 = -10.0;
-    double DF = ((con0 - ce) * ml1 + Te - temp0) * dS;
+    double DF = (con0 * ml1 + Tm1 - temp0) * dS;
     return DF;
 }
 
 double calDF20(double con0, double temp0, double dS)
 {
-    double Te = 0.0;
-    double ce = 0.5;
-    double ml2 = 10.0;
-    double DF = ((con0 - ce) * ml2 + Te - temp0) * dS;
+    double DF = (con0 * ml2 + Te - temp0) * dS;
     return DF;
 }
