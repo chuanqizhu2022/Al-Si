@@ -12,8 +12,8 @@ using namespace cimg_library;
 
 #define N 3
 #define NTH 8
-#define NDX 256
-#define NDY 1
+#define NDX 128
+#define NDY 128
 #define NDZ 1
 #define NDL 2560
 #define PI 3.14159
@@ -35,7 +35,7 @@ double dtime = 1.0e-7;
 
 // interface properties
 double gamma1 = 0.1;
-double astre = -0.05;
+double astre = -0.04;
 double mobi1 = 1.0e-7;
 double delta = 5.0 * dx;
 
@@ -52,7 +52,7 @@ double ml2 = 10.0;
 double kap1 = 0.2;
 double kap2 = 0.2;
 
-double S1 = 1.08e4;
+double S1 = 5.08e4;
 double S2 = 0.03e7;
 
 // diffusivities of silicon
@@ -198,8 +198,8 @@ int main(void)
 
     mij[1][2] = M1 * 0.1;
     mij[2][1] = M1 * 0.1;
-    // anij[1][0] = 1;
-    // anij[0][1] = 1;
+    anij[1][0] = 1;
+    anij[0][1] = 1;
 
     for (i = 0; i <= ndmx; i++)
     {
@@ -219,7 +219,7 @@ int main(void)
         {
             for (k = 0; k <= ndmz; k++)
             {
-                if (i * i + j * j + k * k < NDX / 8 * NDX / 8)
+                if ((i - NDX / 2) * (i - NDX / 2) + (j - NDY / 2) * (j - NDY / 2) + (k - NDZ / 2) * (k - NDZ / 2) < NDX / 8 * NDX / 8)
                 // if (((i - NDX / 2) * (i - NDX / 2) + (j - NDY / 2) * (j - NDY / 2) < (NDX * NDX / 2.0 / PI)) && (k < NDZ / 4))
                 {
                     phi[1][i][j][k] = 1.0;
@@ -458,17 +458,17 @@ int main(void)
                             {
                                 kk = phiIdx[n3][ix][iy][iz];
 
-                                phidx = (phi[kk][ixp][iy][iz] - phi[kk][ixm][iy][iz]) / 2.0;
-                                phidy = (phi[kk][ix][iyp][iz] - phi[kk][ix][iym][iz]) / 2.0;
-                                phidz = (phi[kk][ix][iy][izp] - phi[kk][ix][iy][izm]) / 2.0;
+                                phidx = (phi[kk][ixp][iy][iz] - phi[kk][ixm][iy][iz]) / 2.0 / dx;
+                                phidy = (phi[kk][ix][iyp][iz] - phi[kk][ix][iym][iz]) / 2.0 / dx;
+                                phidz = (phi[kk][ix][iy][izp] - phi[kk][ix][iy][izm]) / 2.0 / dx;
 
-                                phidxx = (phi[kk][ixp][iy][iz] + phi[kk][ixm][iy][iz] - 2.0 * phi[kk][ix][iy][iz]);
-                                phidyy = (phi[kk][ix][iyp][iz] + phi[kk][ix][iym][iz] - 2.0 * phi[kk][ix][iy][iz]);
-                                phidzz = (phi[kk][ix][iy][izp] + phi[kk][ix][iy][izm] - 2.0 * phi[kk][ix][iy][iz]);
+                                phidxx = (phi[kk][ixp][iy][iz] + phi[kk][ixm][iy][iz] - 2.0 * phi[kk][ix][iy][iz]) / dx / dx;
+                                phidyy = (phi[kk][ix][iyp][iz] + phi[kk][ix][iym][iz] - 2.0 * phi[kk][ix][iy][iz]) / dx / dx;
+                                phidzz = (phi[kk][ix][iy][izp] + phi[kk][ix][iy][izm] - 2.0 * phi[kk][ix][iy][iz]) / dx / dx;
 
-                                phidxy = (phi[kk][ixp][iyp][iz] + phi[kk][ixm][iym][iz] - phi[kk][ixm][iyp][iz] - phi[kk][ixp][iym][iz]) / 4.0;
-                                phidxz = (phi[kk][ixp][iy][izp] + phi[kk][ixm][iy][izm] - phi[kk][ixm][iy][izp] - phi[kk][ixp][iy][izm]) / 4.0;
-                                phidyz = (phi[kk][ix][iyp][izp] + phi[kk][ix][iym][izm] - phi[kk][ix][iym][izp] - phi[kk][ix][iyp][izm]) / 4.0;
+                                phidxy = (phi[kk][ixp][iyp][iz] + phi[kk][ixm][iym][iz] - phi[kk][ixm][iyp][iz] - phi[kk][ixp][iym][iz]) / 4.0 / dx / dx;
+                                phidxz = (phi[kk][ixp][iy][izp] + phi[kk][ixm][iy][izm] - phi[kk][ixm][iy][izp] - phi[kk][ixp][iy][izm]) / 4.0 / dx / dx;
+                                phidyz = (phi[kk][ix][iyp][izp] + phi[kk][ix][iym][izm] - phi[kk][ix][iym][izp] - phi[kk][ix][iyp][izm]) / 4.0 / dx / dx;
 
                                 phiabs = phidx * phidx + phidy * phidy + phidz * phidz;
 
@@ -538,7 +538,7 @@ int main(void)
                                 }
                                 else
                                 {
-                                    termiikk = aij[ii][kk] * (phidxx + phidyy + phidzz) / (dx * dx);
+                                    termiikk = aij[ii][kk] * (phidxx + phidyy + phidzz);
                                 }
 
                                 if (anij[jj][kk] == 1 && phiabs != 0.0)
@@ -607,7 +607,7 @@ int main(void)
                                 }
                                 else
                                 {
-                                    termjjkk = aij[jj][kk] * (phidxx + phidyy + phidzz) / (dx * dx);
+                                    termjjkk = aij[jj][kk] * (phidxx + phidyy + phidzz);
                                 }
 
                                 dsum += 0.5 * (termiikk - termjjkk) + (wij[ii][kk] - wij[jj][kk]) * phi[kk][ix][iy][iz];
@@ -1122,23 +1122,41 @@ void datasave(int step)
 {
     int i, j, k;
 
-    // write concentration field (current domain)
-    // FILE *streamc0;
-    // char bufferc0[30];
-    // sprintf(bufferc0, "data/con/3d%d.vtk", step);
-    // streamc0 = fopen(bufferc0, "a");
+    // write concentration field(current domain)
+    FILE *streamc0;
+    char bufferc0[30];
+    sprintf(bufferc0, "data/con/3d%d.vtk", step);
+    streamc0 = fopen(bufferc0, "a");
 
-    // fprintf(streamc0, "# vtk DataFile Version 1.0\n");
-    // fprintf(streamc0, "phi_%d.vtk\n", step);
-    // fprintf(streamc0, "ASCII\n");
-    // fprintf(streamc0, "DATASET STRUCTURED_POINTS\n");
-    // fprintf(streamc0, "DIMENSIONS %d %d %d\n", NDX, NDY, NDZ);
-    // fprintf(streamc0, "ORIGIN 0.0 0.0 0.0\n");
-    // fprintf(streamc0, "ASPECT_RATIO 1.0 1.0 1.0\n");
-    // fprintf(streamc0, "\n");
-    // fprintf(streamc0, "POINT_DATA %d\n", NDX * NDY * NDZ);
-    // fprintf(streamc0, "SCALARS scalars float\n");
-    // fprintf(streamc0, "LOOKUP_TABLE default\n");
+    fprintf(streamc0, "# vtk DataFile Version 1.0\n");
+    fprintf(streamc0, "phi_%d.vtk\n", step);
+    fprintf(streamc0, "ASCII\n");
+    fprintf(streamc0, "DATASET STRUCTURED_POINTS\n");
+    fprintf(streamc0, "DIMENSIONS %d %d %d\n", NDX, NDY, NDZ);
+    fprintf(streamc0, "ORIGIN 0.0 0.0 0.0\n");
+    fprintf(streamc0, "ASPECT_RATIO 1.0 1.0 1.0\n");
+    fprintf(streamc0, "\n");
+    fprintf(streamc0, "POINT_DATA %d\n", NDX * NDY * NDZ);
+    fprintf(streamc0, "SCALARS scalars float\n");
+    fprintf(streamc0, "LOOKUP_TABLE default\n");
+
+    for (k = 0; k <= ndmz; k++)
+    {
+        for (j = 0; j <= ndmy; j++)
+        {
+            for (i = 0; i <= ndmx; i++)
+            {
+                // fprintf(streamc0, "%e\n", phi[1][i][j][k]);
+                fprintf(streamc0, "%e\n", cont[i][j][k]);
+            }
+        }
+    }
+    fclose(streamc0);
+
+    // FILE *streamp; //ストリームのポインタ設定
+    // char bufferp[30];
+    // sprintf(bufferp, "data/phi/1d%d.csv", step);
+    // streamp = fopen(bufferp, "a");
 
     // for (k = 0; k <= ndmz; k++)
     // {
@@ -1146,46 +1164,28 @@ void datasave(int step)
     //     {
     //         for (i = 0; i <= ndmx; i++)
     //         {
-    //             fprintf(streamc0, "%e\n", phi[1][i][j][k]);
-    //             // fprintf(streamc0, "%e\n", cont[i][j][k]);
+    //             fprintf(streamp, "%e\n", phi[1][i][j][k]);
     //         }
     //     }
     // }
-    // fclose(streamc0);
+    // fclose(streamp);
 
-    FILE *streamp; //ストリームのポインタ設定
-    char bufferp[30];
-    sprintf(bufferp, "data/phi/1d%d.csv", step);
-    streamp = fopen(bufferp, "a");
+    // FILE *streamc; //ストリームのポインタ設定
+    // char bufferc[30];
+    // sprintf(bufferc, "data/con/1d%d.csv", step);
+    // streamc = fopen(bufferc, "a");
 
-    for (k = 0; k <= ndmz; k++)
-    {
-        for (j = 0; j <= ndmy; j++)
-        {
-            for (i = 0; i <= ndmx; i++)
-            {
-                fprintf(streamp, "%e\n", phi[1][i][j][k]);
-            }
-        }
-    }
-    fclose(streamp);
-
-    FILE *streamc; //ストリームのポインタ設定
-    char bufferc[30];
-    sprintf(bufferc, "data/con/1d%d.csv", step);
-    streamc = fopen(bufferc, "a");
-
-    for (k = 0; k <= ndmz; k++)
-    {
-        for (j = 0; j <= ndmy; j++)
-        {
-            for (i = 0; i <= ndmx; i++)
-            {
-                fprintf(streamc, "%e\n", cont[i][j][k]);
-            }
-        }
-    }
-    fclose(streamc);
+    // for (k = 0; k <= ndmz; k++)
+    // {
+    //     for (j = 0; j <= ndmy; j++)
+    //     {
+    //         for (i = 0; i <= ndmx; i++)
+    //         {
+    //             fprintf(streamc, "%e\n", cont[i][j][k]);
+    //         }
+    //     }
+    // }
+    // fclose(streamc);
 
     // write interface temperature
     // FILE *streamit; //ストリームのポインタ設定
