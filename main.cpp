@@ -12,8 +12,8 @@ using namespace cimg_library;
 
 #define N 3
 #define NTH 8
-#define NDX 128
-#define NDY 128
+#define NDX 256
+#define NDY 1
 #define NDZ 1
 #define NDL 2560
 #define PI 3.14159
@@ -27,7 +27,7 @@ int mid = NDX / 2;
 int rows = NDX / NTH;
 int rowsl = NDL / NTH;
 
-int nstep = 30001;
+int nstep = 60001;
 int pstep = 2000;
 
 double dx = 1.0e-7;
@@ -46,23 +46,23 @@ double M1 = mobi1 * PI * PI / (8.0 * delta);
 // phase diagram
 double Tm1 = 660.0;
 double ml1 = -680.0;
-double Te = 0.577;
+double Te = 577.0;
 double ce = 0.122;
 double ml2 = 10.0;
 double kap1 = 0.2;
 double kap2 = 0.2;
 
-double S1 = 1.08e6;
+double S1 = 1.08e4;
 double S2 = 0.03e7;
 
-// diffusivities
+// diffusivities of silicon
 double Dl = 0.1e-7;
 double Ds = 2.0e-11;
 
 double gradT = 0.0;   // 0.002;
 double rateT = 0.0;   // 0.000006;
-double temp0 = 659.9; //-1.30 - NDZ / 4 * gradT;
-double cl = 0.00;
+double temp0 = 618.0; //-1.30 - NDZ / 4 * gradT;
+double cl = 0.03;
 
 // physical criteria
 double cap_vol = A1 / S1;
@@ -92,6 +92,7 @@ int intpos, dist, hasS, allS, allL, fs1, fs2;
 int curpos, prepos, frapass, intpass;
 double invV;
 double c0, c00, dc0, sum0, sumplane;
+double sumc, suml, sums;
 
 CImg<unsigned char> ch_fldxz(NDX, NDZ, 1, 3), ch_fldxy(NDX, NDY, 1, 3);
 char outFileCh_xz[64], outFileCh_xy[64];
@@ -218,7 +219,7 @@ int main(void)
         {
             for (k = 0; k <= ndmz; k++)
             {
-                if ((i - NDX / 2) * (i - NDX / 2) + (j - NDY / 2) * (j - NDY / 2) + (k - NDZ / 2) * (k - NDZ / 2) < NDX / 8 * NDX / 8)
+                if (i * i + j * j + k * k < NDX / 8 * NDX / 8)
                 // if (((i - NDX / 2) * (i - NDX / 2) + (j - NDY / 2) * (j - NDY / 2) < (NDX * NDX / 2.0 / PI)) && (k < NDZ / 4))
                 {
                     phi[1][i][j][k] = 1.0;
@@ -252,6 +253,7 @@ int main(void)
         }
     }
     c0 = sum0 / NDX / NDY / NDZ;
+
     for (i = 0; i <= ndmx; i++)
     {
         for (j = 0; j <= ndmy; j++)
@@ -384,7 +386,7 @@ int main(void)
             datasave(istep);
             cout << istep << " steps(" << istep * dtime << " seconds) has done!" << endl;
             cout << "--" << endl;
-            cout << "   The nominal concnetration is " << c0 << endl;
+            cout << "   The nominal concnetration is " << c00 << endl;
             // ****** YZ *******
             cimg_forXY(ch_fldxz, x, z)
             {
@@ -843,42 +845,40 @@ int main(void)
         // --------------------- Correct concentration in liquid phase for mass conservation --------------------------
 #pragma omp barrier
         // collect mass
-        if (th_id == 0 && (istep > nstep / 5))
+        if (th_id == 0)
         {
-            sum0 = 0.0;
-            // fs1 = 0.0;
-            // fs2 = 0.0;
+            sumc = 0.0;
+            suml = 0.0;
+            sums = 0.0;
             for (ix = 0; ix <= ndmx; ix++)
             {
                 for (iy = 0; iy <= ndmy; iy++)
                 {
                     for (iz = 0; iz <= ndmz; iz++)
                     {
-                        sum0 += cont[ix][iy][iz];
-                        // fs1 += phi[1][ix][iy][iz];
-                        // fs2 += phi[2][ix][iy][iz];
+                        suml += phi[0][ix][iy][iz];
+                        sums += phi[1][ix][iy][iz];
+                        sumc += cont[ix][iy][iz];
                     }
                 }
             }
-            c0 = sum0 / NDX / NDY / NDZ;
-            dc0 = c0 - cl;
-            if (dc0 >= 0.001)
+            c00 = sumc / NDX / NDY / NDZ;
+            dc0 = (sumc - c0 * NDX * NDY * NDZ) / suml;
+            for (ix = 0; ix <= ndmx; ix++)
             {
-                for (ix = 0; ix <= ndmx; ix++)
+                for (iy = 0; iy <= ndmy; iy++)
                 {
-                    for (iy = 0; iy <= ndmy; iy++)
+                    for (iz = 0; iz <= ndmz; iz++)
                     {
-                        for (iz = 0; iz <= ndmz; iz++)
+                        conp[0][ix][iy][iz] = conp[0][ix][iy][iz] - dc0 * phi[0][ix][iy][iz];
+                        cont[ix][iy][iz] = conp[0][ix][iy][iz] * phi[0][ix][iy][iz] + conp[1][ix][iy][iz] * phi[1][ix][iy][iz] + conp[2][ix][iy][iz] * phi[2][ix][iy][iz];
+                        if (cont[ix][iy][iz] > 1.0)
                         {
-                            cont[ix][iy][iz] = cont[ix][iy][iz] - dc0;
-                            if (cont[ix][iy][iz] > 1.0)
-                            {
-                                cont[ix][iy][iz] = 1.0;
-                            }
-                            if (cont[ix][iy][iz] < 0.0)
-                            {
-                                cont[ix][iy][iz] = 0.0;
-                            }
+                            cont[ix][iy][iz] = 1.0;
+                        }
+                        if (cont[ix][iy][iz] < 0.0)
+                        {
+                            cont[ix][iy][iz] = 0.0;
                         }
                     }
                 }
@@ -1123,22 +1123,40 @@ void datasave(int step)
     int i, j, k;
 
     // write concentration field (current domain)
-    FILE *streamc0;
-    char bufferc0[30];
-    sprintf(bufferc0, "data/con/3d%d.vtk", step);
-    streamc0 = fopen(bufferc0, "a");
+    // FILE *streamc0;
+    // char bufferc0[30];
+    // sprintf(bufferc0, "data/con/3d%d.vtk", step);
+    // streamc0 = fopen(bufferc0, "a");
 
-    fprintf(streamc0, "# vtk DataFile Version 1.0\n");
-    fprintf(streamc0, "phi_%d.vtk\n", step);
-    fprintf(streamc0, "ASCII\n");
-    fprintf(streamc0, "DATASET STRUCTURED_POINTS\n");
-    fprintf(streamc0, "DIMENSIONS %d %d %d\n", NDX, NDY, NDZ);
-    fprintf(streamc0, "ORIGIN 0.0 0.0 0.0\n");
-    fprintf(streamc0, "ASPECT_RATIO 1.0 1.0 1.0\n");
-    fprintf(streamc0, "\n");
-    fprintf(streamc0, "POINT_DATA %d\n", NDX * NDY * NDZ);
-    fprintf(streamc0, "SCALARS scalars float\n");
-    fprintf(streamc0, "LOOKUP_TABLE default\n");
+    // fprintf(streamc0, "# vtk DataFile Version 1.0\n");
+    // fprintf(streamc0, "phi_%d.vtk\n", step);
+    // fprintf(streamc0, "ASCII\n");
+    // fprintf(streamc0, "DATASET STRUCTURED_POINTS\n");
+    // fprintf(streamc0, "DIMENSIONS %d %d %d\n", NDX, NDY, NDZ);
+    // fprintf(streamc0, "ORIGIN 0.0 0.0 0.0\n");
+    // fprintf(streamc0, "ASPECT_RATIO 1.0 1.0 1.0\n");
+    // fprintf(streamc0, "\n");
+    // fprintf(streamc0, "POINT_DATA %d\n", NDX * NDY * NDZ);
+    // fprintf(streamc0, "SCALARS scalars float\n");
+    // fprintf(streamc0, "LOOKUP_TABLE default\n");
+
+    // for (k = 0; k <= ndmz; k++)
+    // {
+    //     for (j = 0; j <= ndmy; j++)
+    //     {
+    //         for (i = 0; i <= ndmx; i++)
+    //         {
+    //             fprintf(streamc0, "%e\n", phi[1][i][j][k]);
+    //             // fprintf(streamc0, "%e\n", cont[i][j][k]);
+    //         }
+    //     }
+    // }
+    // fclose(streamc0);
+
+    FILE *streamp; //ストリームのポインタ設定
+    char bufferp[30];
+    sprintf(bufferp, "data/phi/1d%d.csv", step);
+    streamp = fopen(bufferp, "a");
 
     for (k = 0; k <= ndmz; k++)
     {
@@ -1146,12 +1164,28 @@ void datasave(int step)
         {
             for (i = 0; i <= ndmx; i++)
             {
-                fprintf(streamc0, "%e\n", phi[1][i][j][k]);
-                // fprintf(streamc0, "%e\n", cont[i][j][k]);
+                fprintf(streamp, "%e\n", phi[1][i][j][k]);
             }
         }
     }
-    fclose(streamc0);
+    fclose(streamp);
+
+    FILE *streamc; //ストリームのポインタ設定
+    char bufferc[30];
+    sprintf(bufferc, "data/con/1d%d.csv", step);
+    streamc = fopen(bufferc, "a");
+
+    for (k = 0; k <= ndmz; k++)
+    {
+        for (j = 0; j <= ndmy; j++)
+        {
+            for (i = 0; i <= ndmx; i++)
+            {
+                fprintf(streamc, "%e\n", cont[i][j][k]);
+            }
+        }
+    }
+    fclose(streamc);
 
     // write interface temperature
     // FILE *streamit; //ストリームのポインタ設定

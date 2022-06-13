@@ -4,9 +4,13 @@ main.cpp -o main \
 && rm -f \
 data/con/*.vtk \
 data/con/*.csv \
+data/phi/*.csv \
 data/interface/*.csv \
 data/fraction/*.csv \
 figures/con_xy/*.png \
 figures/con_yz/*.png \
+figures/con/*.png \
+figures/phi/*.png \
 && ./main \
-&& rm main
+&& rm main \
+&& python plot1d.py
