@@ -13,7 +13,7 @@ using namespace cimg_library;
 #define N 3
 #define NTH 8
 #define NDX 128
-#define NDY 128
+#define NDY 1
 #define NDZ 1
 #define NDL 2560
 #define PI 3.14159
@@ -33,12 +33,12 @@ int pstep = 2000;
 double dx = 1.0e-7;
 double dtime = 1.0e-7;
 
+double delta = 5.0 * dx;
+
 // interface properties
 double gamma1 = 0.1;
 double astre = -0.04;
 double mobi1 = 1.0e-7;
-double delta = 5.0 * dx;
-
 double A1 = 8.0 * delta * gamma1 / PI / PI;
 double W1 = 4.0 * gamma1 / delta;
 double M1 = mobi1 * PI * PI / (8.0 * delta);
@@ -48,21 +48,23 @@ double Tm1 = 660.0;
 double ml1 = -680.0;
 double Te = 577.0;
 double ce = 0.122;
-double ml2 = 10.0;
+double ml2 = 1045.0;
+double Tm2 = 449.51;
 double kap1 = 0.2;
-double kap2 = 0.2;
 
 double S1 = 5.08e4;
-double S2 = 0.03e7;
+double S2 = 2.4e4;
 
 // diffusivities of silicon
 double Dl = 0.1e-7;
 double Ds = 2.0e-11;
 
-double gradT = 0.0;   // 0.002;
-double rateT = 0.0;   // 0.000006;
-double temp0 = 618.0; //-1.30 - NDZ / 4 * gradT;
-double cl = 0.03;
+double gradT = 0.0; // 0.002;
+double rateT = 0.0; // 0.000006;
+// double temp0 = 618.0; //-1.30 - NDZ / 4 * gradT;
+// double cl = 0.03;
+double temp0 = 1200.0; //-1.30 - NDZ / 4 * gradT;
+double cl = 0.8;
 
 // physical criteria
 double cap_vol = A1 / S1;
@@ -221,23 +223,23 @@ int main(void)
             {
                 if ((i - NDX / 2) * (i - NDX / 2) + (j - NDY / 2) * (j - NDY / 2) + (k - NDZ / 2) * (k - NDZ / 2) < NDX / 8 * NDX / 8)
                 // if (((i - NDX / 2) * (i - NDX / 2) + (j - NDY / 2) * (j - NDY / 2) < (NDX * NDX / 2.0 / PI)) && (k < NDZ / 4))
-                {
-                    phi[1][i][j][k] = 1.0;
-                    conp[1][i][j][k] = calC1e(temp[i][j][k]);
-                    phi[2][i][j][k] = 0.0;
-                    conp[2][i][j][k] = calC2e(temp[i][j][k]);
-                    phi[0][i][j][k] = 0.0;
-                    conp[0][i][j][k] = calC01e(temp[i][j][k]);
-                }
-                // else if (((i - NDX / 2) * (i - NDX / 2) + (j - NDY / 2) * (j - NDY / 2) >= (NDX * NDX / 2.0 / PI)) && (k < NDZ / 4))
                 // {
-                //     phi[1][i][j][k] = 0.0;
+                //     phi[1][i][j][k] = 1.0;
                 //     conp[1][i][j][k] = calC1e(temp[i][j][k]);
-                //     phi[2][i][j][k] = 1.0;
+                //     phi[2][i][j][k] = 0.0;
                 //     conp[2][i][j][k] = calC2e(temp[i][j][k]);
                 //     phi[0][i][j][k] = 0.0;
-                //     conp[0][i][j][k] = calC02e(temp[i][j][k]);
+                //     conp[0][i][j][k] = calC01e(temp[i][j][k]);
                 // }
+                // else if (((i - NDX / 2) * (i - NDX / 2) + (j - NDY / 2) * (j - NDY / 2) >= (NDX * NDX / 2.0 / PI)) && (k < NDZ / 4))
+                {
+                    phi[1][i][j][k] = 0.0;
+                    conp[1][i][j][k] = calC1e(temp[i][j][k]);
+                    phi[2][i][j][k] = 1.0;
+                    conp[2][i][j][k] = calC2e(temp[i][j][k]);
+                    phi[0][i][j][k] = 0.0;
+                    conp[0][i][j][k] = calC02e(temp[i][j][k]);
+                }
                 else
                 {
                     phi[1][i][j][k] = 0.0;
@@ -849,7 +851,6 @@ int main(void)
         {
             sumc = 0.0;
             suml = 0.0;
-            sums = 0.0;
             for (ix = 0; ix <= ndmx; ix++)
             {
                 for (iy = 0; iy <= ndmy; iy++)
@@ -857,7 +858,6 @@ int main(void)
                     for (iz = 0; iz <= ndmz; iz++)
                     {
                         suml += phi[0][ix][iy][iz];
-                        sums += phi[1][ix][iy][iz];
                         sumc += cont[ix][iy][iz];
                     }
                 }
@@ -1123,22 +1123,40 @@ void datasave(int step)
     int i, j, k;
 
     // write concentration field(current domain)
-    FILE *streamc0;
-    char bufferc0[30];
-    sprintf(bufferc0, "data/con/3d%d.vtk", step);
-    streamc0 = fopen(bufferc0, "a");
+    // FILE *streamc0;
+    // char bufferc0[30];
+    // sprintf(bufferc0, "data/con/3d%d.vtk", step);
+    // streamc0 = fopen(bufferc0, "a");
 
-    fprintf(streamc0, "# vtk DataFile Version 1.0\n");
-    fprintf(streamc0, "phi_%d.vtk\n", step);
-    fprintf(streamc0, "ASCII\n");
-    fprintf(streamc0, "DATASET STRUCTURED_POINTS\n");
-    fprintf(streamc0, "DIMENSIONS %d %d %d\n", NDX, NDY, NDZ);
-    fprintf(streamc0, "ORIGIN 0.0 0.0 0.0\n");
-    fprintf(streamc0, "ASPECT_RATIO 1.0 1.0 1.0\n");
-    fprintf(streamc0, "\n");
-    fprintf(streamc0, "POINT_DATA %d\n", NDX * NDY * NDZ);
-    fprintf(streamc0, "SCALARS scalars float\n");
-    fprintf(streamc0, "LOOKUP_TABLE default\n");
+    // fprintf(streamc0, "# vtk DataFile Version 1.0\n");
+    // fprintf(streamc0, "phi_%d.vtk\n", step);
+    // fprintf(streamc0, "ASCII\n");
+    // fprintf(streamc0, "DATASET STRUCTURED_POINTS\n");
+    // fprintf(streamc0, "DIMENSIONS %d %d %d\n", NDX, NDY, NDZ);
+    // fprintf(streamc0, "ORIGIN 0.0 0.0 0.0\n");
+    // fprintf(streamc0, "ASPECT_RATIO 1.0 1.0 1.0\n");
+    // fprintf(streamc0, "\n");
+    // fprintf(streamc0, "POINT_DATA %d\n", NDX * NDY * NDZ);
+    // fprintf(streamc0, "SCALARS scalars float\n");
+    // fprintf(streamc0, "LOOKUP_TABLE default\n");
+
+    // for (k = 0; k <= ndmz; k++)
+    // {
+    //     for (j = 0; j <= ndmy; j++)
+    //     {
+    //         for (i = 0; i <= ndmx; i++)
+    //         {
+    //             // fprintf(streamc0, "%e\n", phi[1][i][j][k]);
+    //             fprintf(streamc0, "%e\n", cont[i][j][k]);
+    //         }
+    //     }
+    // }
+    // fclose(streamc0);
+
+    FILE *streamp; //ストリームのポインタ設定
+    char bufferp[30];
+    sprintf(bufferp, "data/phi/1d%d.csv", step);
+    streamp = fopen(bufferp, "a");
 
     for (k = 0; k <= ndmz; k++)
     {
@@ -1146,46 +1164,28 @@ void datasave(int step)
         {
             for (i = 0; i <= ndmx; i++)
             {
-                // fprintf(streamc0, "%e\n", phi[1][i][j][k]);
-                fprintf(streamc0, "%e\n", cont[i][j][k]);
+                fprintf(streamp, "%e\n", phi[2][i][j][k]);
             }
         }
     }
-    fclose(streamc0);
+    fclose(streamp);
 
-    // FILE *streamp; //ストリームのポインタ設定
-    // char bufferp[30];
-    // sprintf(bufferp, "data/phi/1d%d.csv", step);
-    // streamp = fopen(bufferp, "a");
+    FILE *streamc; //ストリームのポインタ設定
+    char bufferc[30];
+    sprintf(bufferc, "data/con/1d%d.csv", step);
+    streamc = fopen(bufferc, "a");
 
-    // for (k = 0; k <= ndmz; k++)
-    // {
-    //     for (j = 0; j <= ndmy; j++)
-    //     {
-    //         for (i = 0; i <= ndmx; i++)
-    //         {
-    //             fprintf(streamp, "%e\n", phi[1][i][j][k]);
-    //         }
-    //     }
-    // }
-    // fclose(streamp);
-
-    // FILE *streamc; //ストリームのポインタ設定
-    // char bufferc[30];
-    // sprintf(bufferc, "data/con/1d%d.csv", step);
-    // streamc = fopen(bufferc, "a");
-
-    // for (k = 0; k <= ndmz; k++)
-    // {
-    //     for (j = 0; j <= ndmy; j++)
-    //     {
-    //         for (i = 0; i <= ndmx; i++)
-    //         {
-    //             fprintf(streamc, "%e\n", cont[i][j][k]);
-    //         }
-    //     }
-    // }
-    // fclose(streamc);
+    for (k = 0; k <= ndmz; k++)
+    {
+        for (j = 0; j <= ndmy; j++)
+        {
+            for (i = 0; i <= ndmx; i++)
+            {
+                fprintf(streamc, "%e\n", cont[i][j][k]);
+            }
+        }
+    }
+    fclose(streamc);
 
     // write interface temperature
     // FILE *streamit; //ストリームのポインタ設定
@@ -1237,13 +1237,13 @@ double calC1e(double temp0)
 
 double calC02e(double temp0)
 {
-    double c02e = ce + (temp0 - Te) / ml2;
+    double c02e = (temp0 - Tm2) / ml2;
     return c02e;
 }
 
 double calC2e(double temp0)
 {
-    double c2e = 1.0 - (1.0 - (ce + (temp0 - Te) / ml2)) * kap2;
+    double c2e = 1.0;
     return c2e;
 }
 
@@ -1255,6 +1255,6 @@ double calDF10(double con0, double temp0, double dS)
 
 double calDF20(double con0, double temp0, double dS)
 {
-    double DF = (con0 * ml2 + Te - temp0) * dS;
+    double DF = (con0 * ml2 + Tm2 - temp0) * dS;
     return DF;
 }
