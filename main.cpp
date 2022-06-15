@@ -13,10 +13,11 @@ using namespace cimg_library;
 #define N 3
 #define NTH 8
 #define NDX 128
-#define NDY 128
+#define NDY 1
 #define NDZ 1
 #define NDL 2560
 #define PI 3.14159
+#define RR 8.314
 
 int nm = N - 1;
 int ndmx = NDX - 1;
@@ -27,55 +28,53 @@ int mid = NDX / 2;
 int rows = NDX / NTH;
 int rowsl = NDL / NTH;
 
-int nstep = 60001;
-int pstep = 2000;
+int nstep = 80001;
+int pstep = 4000;
 
 double dx = 1.0e-7;
 double dtime = 1.0e-7;
 double delta = 5.0 * dx;
 
 // interface properties
-double gamma1 = 0.1;
+double gamma1 = 0.165;
 double astre = -0.04;
-double mobi1 = 1.0e-7;
+double mobi1 = 0.1e-10;
 double A1 = 8.0 * delta * gamma1 / PI / PI;
 double W1 = 4.0 * gamma1 / delta;
 double M1 = mobi1 * PI * PI / (8.0 * delta);
 
-double gamma2 = 0.2;
-double mobi2 = 0.5e-7;
+double gamma2 = 0.352;
+double mobi2 = 0.1e-10;
 double A2 = 8.0 * delta * gamma2 / PI / PI;
 double W2 = 4.0 * gamma2 / delta;
 double M2 = mobi2 * PI * PI / (8.0 * delta);
 
-double gamma0 = 0.6;
+double gamma0 = 0.38;
 double mobi0 = (mobi1 + mobi2) * 0.02;
 double A0 = 8.0 * delta * gamma0 / PI / PI;
 double W0 = 4.0 * gamma0 / delta;
 double M0 = mobi0 * PI * PI / (8.0 * delta);
 
 // phase diagram
-double Tm1 = 660.0;
-double ml1 = -680.0;
-double Te = 577.0;
+double Te = 850.0;
 double ce = 0.122;
-double ml2 = 1045.0;
-double Tm2 = 449.51;
-double kap1 = 0.2;
+double Tm1 = 933.0;
+double ml1 = -680.0;
+double ml2 = 953.3;
+double Tm2 = 733.7;
+double kap1 = 0.131;
 
-double S1 = 1.08e3;
-double S2 = 2.4e3;
+double S1 = 1.08e6;
+double S2 = 2.4e6;
 
 // diffusivities
-double Dl = 0.1e-7;
-double Ds = 2.0e-11;
-
-double gradT = 0.0; // 0.002;
-double rateT = 0.0; // 0.000006;
-// double temp0 = 618.0; //-1.30 - NDZ / 4 * gradT;
-// double cl = 0.03;
-double temp0 = 450.0; //-1.30 - NDZ / 4 * gradT;
+double gradT = 0.0;
+double rateT = 0.0;
+double temp0 = 800.0;
 double cl = 0.122;
+
+double Dl = 1.34e-7 * exp(-3.0e4 / RR / temp0);
+double Ds = 0.89e-4 * exp(-1.36e5 / RR / temp0);
 
 // physical criteria
 double cap_vol = A1 / S1;
@@ -121,6 +120,8 @@ int main(void)
     cout << "ratio of interface energy to volume energy is " << cap_vol << endl;
     cout << "concenration field stablity number is: " << alpha_d << endl;
     cout << "phase field stability number is: " << alpha_m << endl;
+    cout << "Dl: " << Dl << endl;
+    cout << "Ds: " << Ds << endl;
 
     if ((alpha_d > 0.15) || (alpha_m > 0.15))
     {
@@ -248,17 +249,17 @@ int main(void)
         {
             for (k = 0; k <= ndmz; k++)
             {
-                // if ((i - NDX / 2) * (i - NDX / 2) + (j - NDY / 2) * (j - NDY / 2) + (k - NDZ / 2) * (k - NDZ / 2) < NDX / 8 * NDX / 8)
-                if (j < NDY * 9.0 / 10.0 && i < NDX / 4)
-                {
-                    phi[1][i][j][k] = 1.0;
-                    conp[1][i][j][k] = calC1e(temp[i][j][k]);
-                    phi[2][i][j][k] = 0.0;
-                    conp[2][i][j][k] = calC2e(temp[i][j][k]);
-                    phi[0][i][j][k] = 0.0;
-                    conp[0][i][j][k] = calC01e(temp[i][j][k]);
-                }
-                else if (j >= NDY * 9.0 / 10.0 && i < NDX / 4)
+                if ((i - NDX / 2) * (i - NDX / 2) + (j - NDY / 2) * (j - NDY / 2) + (k - NDZ / 2) * (k - NDZ / 2) < NDX / 32 * NDX / 32)
+                // if (j < NDY * 9.0 / 10.0 && i < NDX / 4)
+                // {
+                //     phi[1][i][j][k] = 1.0;
+                //     conp[1][i][j][k] = calC1e(temp[i][j][k]);
+                //     phi[2][i][j][k] = 0.0;
+                //     conp[2][i][j][k] = calC2e(temp[i][j][k]);
+                //     phi[0][i][j][k] = 0.0;
+                //     conp[0][i][j][k] = calC01e(temp[i][j][k]);
+                // }
+                // if (j >= NDY * 9.0 / 10.0 && i < NDX / 4)
                 {
                     phi[1][i][j][k] = 0.0;
                     conp[1][i][j][k] = calC1e(temp[i][j][k]);
@@ -1150,22 +1151,40 @@ void datasave(int step)
     int i, j, k;
 
     // write concentration field(current domain)
-    FILE *streamc0;
-    char bufferc0[30];
-    sprintf(bufferc0, "data/con/3d%d.vtk", step);
-    streamc0 = fopen(bufferc0, "a");
+    // FILE *streamc0;
+    // char bufferc0[30];
+    // sprintf(bufferc0, "data/con/3d%d.vtk", step);
+    // streamc0 = fopen(bufferc0, "a");
 
-    fprintf(streamc0, "# vtk DataFile Version 1.0\n");
-    fprintf(streamc0, "phi_%d.vtk\n", step);
-    fprintf(streamc0, "ASCII\n");
-    fprintf(streamc0, "DATASET STRUCTURED_POINTS\n");
-    fprintf(streamc0, "DIMENSIONS %d %d %d\n", NDX, NDY, NDZ);
-    fprintf(streamc0, "ORIGIN 0.0 0.0 0.0\n");
-    fprintf(streamc0, "ASPECT_RATIO 1.0 1.0 1.0\n");
-    fprintf(streamc0, "\n");
-    fprintf(streamc0, "POINT_DATA %d\n", NDX * NDY * NDZ);
-    fprintf(streamc0, "SCALARS scalars float\n");
-    fprintf(streamc0, "LOOKUP_TABLE default\n");
+    // fprintf(streamc0, "# vtk DataFile Version 1.0\n");
+    // fprintf(streamc0, "phi_%d.vtk\n", step);
+    // fprintf(streamc0, "ASCII\n");
+    // fprintf(streamc0, "DATASET STRUCTURED_POINTS\n");
+    // fprintf(streamc0, "DIMENSIONS %d %d %d\n", NDX, NDY, NDZ);
+    // fprintf(streamc0, "ORIGIN 0.0 0.0 0.0\n");
+    // fprintf(streamc0, "ASPECT_RATIO 1.0 1.0 1.0\n");
+    // fprintf(streamc0, "\n");
+    // fprintf(streamc0, "POINT_DATA %d\n", NDX * NDY * NDZ);
+    // fprintf(streamc0, "SCALARS scalars float\n");
+    // fprintf(streamc0, "LOOKUP_TABLE default\n");
+
+    // for (k = 0; k <= ndmz; k++)
+    // {
+    //     for (j = 0; j <= ndmy; j++)
+    //     {
+    //         for (i = 0; i <= ndmx; i++)
+    //         {
+    //             // fprintf(streamc0, "%e\n", phi[1][i][j][k]);
+    //             fprintf(streamc0, "%e\n", cont[i][j][k]);
+    //         }
+    //     }
+    // }
+    // fclose(streamc0);
+
+    FILE *streamp; //ストリームのポインタ設定
+    char bufferp[30];
+    sprintf(bufferp, "data/phi/1d%d.csv", step);
+    streamp = fopen(bufferp, "a");
 
     for (k = 0; k <= ndmz; k++)
     {
@@ -1173,46 +1192,28 @@ void datasave(int step)
         {
             for (i = 0; i <= ndmx; i++)
             {
-                // fprintf(streamc0, "%e\n", phi[1][i][j][k]);
-                fprintf(streamc0, "%e\n", cont[i][j][k]);
+                fprintf(streamp, "%e\n", phi[2][i][j][k]);
             }
         }
     }
-    fclose(streamc0);
+    fclose(streamp);
 
-    // FILE *streamp; //ストリームのポインタ設定
-    // char bufferp[30];
-    // sprintf(bufferp, "data/phi/1d%d.csv", step);
-    // streamp = fopen(bufferp, "a");
+    FILE *streamc; //ストリームのポインタ設定
+    char bufferc[30];
+    sprintf(bufferc, "data/con/1d%d.csv", step);
+    streamc = fopen(bufferc, "a");
 
-    // for (k = 0; k <= ndmz; k++)
-    // {
-    //     for (j = 0; j <= ndmy; j++)
-    //     {
-    //         for (i = 0; i <= ndmx; i++)
-    //         {
-    //             fprintf(streamp, "%e\n", phi[2][i][j][k]);
-    //         }
-    //     }
-    // }
-    // fclose(streamp);
-
-    // FILE *streamc; //ストリームのポインタ設定
-    // char bufferc[30];
-    // sprintf(bufferc, "data/con/1d%d.csv", step);
-    // streamc = fopen(bufferc, "a");
-
-    // for (k = 0; k <= ndmz; k++)
-    // {
-    //     for (j = 0; j <= ndmy; j++)
-    //     {
-    //         for (i = 0; i <= ndmx; i++)
-    //         {
-    //             fprintf(streamc, "%e\n", cont[i][j][k]);
-    //         }
-    //     }
-    // }
-    // fclose(streamc);
+    for (k = 0; k <= ndmz; k++)
+    {
+        for (j = 0; j <= ndmy; j++)
+        {
+            for (i = 0; i <= ndmx; i++)
+            {
+                fprintf(streamc, "%e\n", cont[i][j][k]);
+            }
+        }
+    }
+    fclose(streamc);
 
     // write interface temperature
     // FILE *streamit; //ストリームのポインタ設定
