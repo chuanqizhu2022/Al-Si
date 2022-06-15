@@ -32,7 +32,7 @@ int nstep = 80001;
 int pstep = 4000;
 
 double dx = 1.0e-7;
-double dtime = 1.0e-7;
+double dtime = 0.8e-6;
 double delta = 5.0 * dx;
 
 // interface properties
